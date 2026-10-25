@@ -1,0 +1,11 @@
+Baton
+Copyright 2026 Cornch (https://github.com/cornch-k)
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+The flow designs are inspired by the flows published by Humanfia
+(https://humanfia.ai/flows/), the Humanize project
+(https://github.com/humanfia/humanize, Apache-2.0), and PolyArch/humanize.
+Baton is an independent re-implementation for Claude Code subagents and
+contains no code or prompt text from those projects. Baton is not affiliated
+with or endorsed by Humanfia or PolyArch.

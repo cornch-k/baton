@@ -1,0 +1,17 @@
+{
+  "name": "baton",
+  "description": "Baton: agent relay loops for Claude Code.",
+  "owner": {
+    "name": "Cornch",
+    "url": "https://github.com/cornch-k"
+  },
+  "plugins": [
+    {
+      "name": "baton",
+      "source": "./",
+      "description": "Agent relay loops: fresh subagents with different models and stances pass the baton through your repo.",
+      "category": "development",
+      "tags": ["agents", "loops", "subagents", "review"]
+    }
+  ]
+}

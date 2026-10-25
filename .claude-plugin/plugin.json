@@ -1,0 +1,66 @@
+{
+  "name": "baton",
+  "displayName": "Baton",
+  "version": "0.1.0",
+  "description": "Agent relay loops for Claude Code: fresh subagents with different models and stances pass the baton through your repo. Flame chase, ralph loops, reviewed loops, plan-then-build, scored parallel lanes, a recursive Lean prover, and a flow author.",
+  "author": {
+    "name": "Cornch",
+    "url": "https://github.com/cornch-k"
+  },
+  "homepage": "https://github.com/cornch-k/baton",
+  "repository": "https://github.com/cornch-k/baton",
+  "license": "Apache-2.0",
+  "keywords": ["agents", "subagents", "loops", "flame-chase", "ralph-loop", "code-review", "multi-agent"],
+  "userConfig": {
+    "chaser_a_model": {
+      "type": "string",
+      "title": "Chaser A model",
+      "description": "Model for chaser A in chase flows.",
+      "options": ["opus", "sonnet", "haiku", "fable"],
+      "default": "opus"
+    },
+    "chaser_a_stance": {
+      "type": "string",
+      "title": "Chaser A stance",
+      "description": "How chaser A approaches each turn.",
+      "options": ["builder", "skeptic", "simplifier", "tester"],
+      "default": "builder"
+    },
+    "chaser_b_model": {
+      "type": "string",
+      "title": "Chaser B model",
+      "description": "Model for chaser B in chase flows. Pick a different model from chaser A so the two fail differently.",
+      "options": ["opus", "sonnet", "haiku", "fable"],
+      "default": "sonnet"
+    },
+    "chaser_b_stance": {
+      "type": "string",
+      "title": "Chaser B stance",
+      "description": "How chaser B approaches each turn.",
+      "options": ["builder", "skeptic", "simplifier", "tester"],
+      "default": "skeptic"
+    },
+    "worker_model": {
+      "type": "string",
+      "title": "Worker model",
+      "description": "Model for single-worker roles: ralph loops, goal, actor, builder, planner, writer, prover, cleaner, coordinator.",
+      "options": ["opus", "sonnet", "haiku", "fable"],
+      "default": "opus"
+    },
+    "reviewer_model": {
+      "type": "string",
+      "title": "Reviewer model",
+      "description": "Model for fresh reviewers, analysts, critics and auditors.",
+      "options": ["opus", "sonnet", "haiku", "fable"],
+      "default": "sonnet"
+    },
+    "default_turns": {
+      "type": "number",
+      "title": "Default turn budget",
+      "description": "Work turns per run when --turns isn't given.",
+      "default": 8,
+      "min": 1,
+      "max": 200
+    }
+  }
+}
