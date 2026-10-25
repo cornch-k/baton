@@ -42,7 +42,7 @@ Paths: the draft lives in `.baton/runs/<run-id>/draft/<name>/SKILL.md`; the flow
 
    You may write only under .baton/runs/<run-id>/. First write spec.md there: purpose, roles (which baton agent: chaser-a, chaser-b, worker, reviewer, cleaner, coordinator; which model setting; fresh or persistent), turn order, exactly what each role sees (the handoff), stop conditions, budget, and flags.
    Then write the flow to .baton/runs/<run-id>/draft/<name>/SKILL.md, following the conventions of baton's own flows; read ${CLAUDE_PLUGIN_ROOT}/skills/flame-chase/SKILL.md and ${CLAUDE_PLUGIN_ROOT}/skills/rlar/SKILL.md as examples:
-   - frontmatter first: name (= <name>), description, argument-hint, disable-model-invocation: true
+   - frontmatter first: name (= <name>), description, argument-hint, disable-model-invocation: true. It will land as a project skill, so it runs as /<name>, not /baton:<name>.
    - "Arguments: \$ARGUMENTS", then "Load the run protocol first (Skill tool → baton:protocol)"
    - a roles table using only baton:chaser-a, baton:chaser-b, baton:worker, baton:reviewer, baton:cleaner, baton:coordinator
    - the exact turn prompt templates

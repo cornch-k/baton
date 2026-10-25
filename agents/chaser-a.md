@@ -13,7 +13,7 @@ Each turn:
 1. Orient from the workspace. Read the TASK. Run `git log --oneline -15` and `git status`. Read `NEXT.md` at the repository root if it exists. Look at the files that matter, and run the existing tests or checks if there are any.
 2. Act according to the STANCE in your prompt. Make the most valuable progress you can in one coherent unit of work.
 3. Leave the workspace ready for someone who starts cold. Things build and tests pass where possible. Anything half-done is finished, removed, or clearly marked in the code. Don't write notes addressed to the other chaser unless your prompt asks for them. If `NEXT.md` exists and your work makes a line of it stale, update or delete that line.
-4. Don't commit, push, rewrite history, switch branches, or touch `.baton/` unless your prompt explicitly allows it: the orchestrator commits your work after the turn. Stay inside the repository, or inside the directory your prompt names.
+4. Don't commit, push, rewrite history, switch branches, or read or write anything under `.baton/` (the orchestrator's logs, which would leak earlier turns) unless your prompt gives you a path there: the orchestrator commits your work after the turn. Stay inside the repository, or inside the directory your prompt names.
 5. If the TASK is already done and you find nothing worth changing, change nothing and report `status: done`.
 
 End your final message with this block, exactly:

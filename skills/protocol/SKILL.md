@@ -44,7 +44,11 @@ Flows add their own flags. If the TASK is empty and you aren't resuming, ask the
 1. The directory must be a git repository: `git rev-parse --show-toplevel`. If it isn't, tell the user to run `git init` and make a first commit, then stop. Work from the repository root.
 2. The working tree must be clean: `git status --porcelain` prints nothing. If it doesn't, tell the user to commit or stash, then stop. Never stash, reset or discard their changes yourself.
 3. Run id: `<flow>-<YYYYMMDD-HHMMSS>` from `date +%Y%m%d-%H%M%S`.
-4. Run directory: `.baton/runs/<run-id>/`. Make sure `.baton/` is listed in `.git/info/exclude` (append it once). Use that file, not `.gitignore`, so the user's tree stays untouched.
+4. Run directory and exclude, with Bash (file-editing tools are refused inside `.git/`):
+   ```bash
+   mkdir -p .baton/runs/<run-id> && { grep -qxF '.baton/' .git/info/exclude 2>/dev/null || echo '.baton/' >> .git/info/exclude; }
+   ```
+   Use `.git/info/exclude`, not `.gitignore`, so the user's tree stays untouched. Doc-only flows run this step too.
 5. Branch: unless `--in-place`, `git switch -c baton/<run-id>`. Any other branch the flow needs is named `baton/<run-id>-<suffix>` (never `baton/<run-id>/<suffix>`: git can't have both). Tags follow the same rule.
 6. Write `.baton/runs/<run-id>/state.json`:
    ```json
@@ -97,9 +101,9 @@ Keep only these blocks in your context. Don't read full diffs or files to second
 
 1. **Commit** (unless the flow says otherwise):
    ```bash
-   git add -A && { git diff --cached --quiet && echo EMPTY || git commit -q -m "baton(<flow>): t<n> <role>: <summary>"; }
+   git add -A && { git diff --cached --quiet && echo EMPTY || git commit -q -m "baton(<flow>): t<n> <role>"; }
    ```
-   A turn that staged nothing is `empty`.
+   A turn that staged nothing is `empty`. Keep the agent's summary out of the commit message: fresh agents read `git log`, and the summary is what the last agent *said*, which flows like flame-chase must not pass on. Summaries go to `log.md`.
 2. **Check**: if `--check` was given, run it with its output kept out of your context, and remove only the untracked files the check itself created (caches, build output), so they don't land in the next commit:
    ```bash
    git ls-files --others --exclude-standard > .baton/runs/<run-id>/pre-check.txt
