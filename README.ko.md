@@ -45,7 +45,7 @@ claude --plugin-dir /path/to/baton
 | `/baton:fixed-interrupt "<작업>" --eval "<명령>"` | 평가 명령으로 채택된 실험 k개마다 chaser가 교대합니다. 마지막에 블라인드 리뷰어가 승자를 고릅니다 |
 | `/baton:parallel-chase "<작업>"` | coordinator가 서로 다른 레인 3개를 계획하고, 레인마다 병렬로 chase합니다. 리더보드를 공유합니다 |
 | `/baton:parallel-chase-pr "<작업>" --eval "<명령>"` | 레인 3개가 후보를 제안하고, 깨끗한 체크아웃에서 잰 점수가 오를 때만 병합합니다 |
-| `/baton:recursive-lean-prover "<정리>"` | Lean 4 정리를 보조정리로 쪼갭니다. 산문 증명, 단계별 검토, 분할, 워크트리에서 형식화, 위키 기록 |
+| `/baton:recursive-lean-prover "<정리>"` | Lean 4 정리를 보조정리로 쪼갭니다. 산문 증명, 단계별 검토, 분할, 워크트리에서 형식화, 위키 기록. Lean이 계획한 명제와 정확히 같음을 확인하고 `#print axioms`에 `sorryAx`나 추가 공리가 없을 때만 받아들입니다. Lake 프로젝트와 elan으로 설치한 Lean이 필요합니다(`brew install elan-init`) |
 | `/baton:author-flow "<설명>"` | 설명대로 새 flow를 씁니다. 로드 검사, 가짜 세계 종료 검사, 비평가를 모두 통과해야 들어갑니다 |
 
 `/baton:flows`로 목록을 보고 고를 수 있습니다.

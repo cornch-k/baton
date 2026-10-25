@@ -45,7 +45,7 @@ claude --plugin-dir /path/to/baton
 | `/baton:fixed-interrupt "<task>" --eval "<cmd>"` | Chasers alternate every k accepted experiments scored by your evaluator; a blind reviewer picks the winner |
 | `/baton:parallel-chase "<task>"` | A coordinator plans three different lanes; each lane chases in parallel, with a shared leaderboard |
 | `/baton:parallel-chase-pr "<task>" --eval "<cmd>"` | Three lanes propose; a change merges only when a clean evaluation improves the score |
-| `/baton:recursive-lean-prover "<theorem>"` | Lean 4 theorem → lemmas: prose proof, step-by-step audit, split, formalize in worktrees, wiki |
+| `/baton:recursive-lean-prover "<theorem>"` | Lean 4 theorem → lemmas: prose proof, step-by-step audit, split, formalize in worktrees, wiki. A lemma is accepted only when Lean confirms the exact planned statement and `#print axioms` shows no `sorryAx` or extra axiom. Needs a Lake project and Lean via elan (`brew install elan-init`) |
 | `/baton:author-flow "<description>"` | Writes a new flow; it lands only after a load check, a fake-world termination check and a critic |
 
 `/baton:flows` lists them and helps you pick one.
