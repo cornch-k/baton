@@ -32,7 +32,7 @@ IDEA:
 <task, verbatim>
 
 Turn this loose idea into a draft. Write no code and change no file other than <out>.
-Explore <N> directions. Check each against this repository; read-only helper subagents (Explore) are allowed for that. Then write <out> with these sections:
+Explore <N> directions. Check each against this repository (read only what each direction depends on). Then write <out> with these sections:
 1. Idea: the idea restated in two or three sentences.
 2. Main direction: what, why, and how it fits this repository, with file references.
 3. Alternatives: each direction you didn't pick, with its trade-off against the main one.

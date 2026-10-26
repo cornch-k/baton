@@ -1,7 +1,7 @@
 {
   "name": "baton",
   "displayName": "Baton",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Agent relay loops for Claude Code: fresh subagents with different models and stances pass the baton through your repo. Flame chase, ralph loops, reviewed loops, plan-then-build, scored parallel lanes, a recursive Lean prover, and a flow author.",
   "author": {
     "name": "Cornch",

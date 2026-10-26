@@ -55,8 +55,8 @@ You start fresh; this lane's workspace is the only handoff. Make the most valuab
 
 After all lanes return:
 
-1. Commit each lane in its own directory (`git -C <dir> add -A`, then commit as in the protocol), and append one protocol log line per lane to `log.md`, starting `r<r> lane-<i>` instead of `t<n>`.
-2. With `--eval`, run the evaluator in each lane directory one at a time (not in parallel), logging to `eval-r<r>-lane-<i>.log`. You are the only writer of `.baton/runs/<run-id>/leaderboard.json`.
+1. In one Bash call, run the protocol's `turn` once per lane, with label `"r<r> lane-<i>"` and `-C <lane dir>` for lanes 2 and 3.
+2. With `--eval`, in one Bash call, run `eval <run_dir> r<r>-lane-<i> -C <lane dir>` for each lane, one after another (not in parallel). Then update `leaderboard.json` in the run directory; you are its only writer.
 3. A lane whose two turns in a row failed is held: it gets no more turns.
 
 ## Stop

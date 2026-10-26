@@ -23,7 +23,7 @@ Every flow runs as `/baton:<flow> "<task>" [flags]`, works on a run branch `bato
 | `fixed-interrupt` | Chasers alternate every k accepted experiments scored by your evaluator; a blind review picks the winner | Optimizing a measurable score |
 | `parallel-chase` | A coordinator plans three different lanes; each lane chases in parallel; a shared leaderboard | The right approach isn't obvious |
 | `parallel-chase-pr` | Three lanes propose; merged only when a clean evaluation improves the score | Score-driven work where nothing should land unmeasured |
-| `recursive-lean-prover` | Lean 4 theorem → lemmas, prose audit, split, formalize in worktrees, wiki | Formal proofs in a Lake project |
+| `recursive-lean-prover` | Lean 4 theorem → lemmas: a direct Lean attempt first, then prose audit and split only where needed, formalized in worktrees, wiki | Formal proofs in a Lake project |
 | `author-flow` | Writes a new flow from your description; lands only after load, fake-world and critic gates | You want a loop baton doesn't have |
 
 ## Settings
@@ -40,4 +40,4 @@ Stances: `builder`, `skeptic`, `simplifier`, `tester`. Models: `opus`, `sonnet`,
 
 - Use a scratch repository or a clean working tree; baton refuses to start on uncommitted changes.
 - Choose `acceptEdits` or `auto` permission mode so turns don't stop on prompts. Baton never turns on bypass permissions for you.
-- Runs cost tokens in proportion to turns × agents. Start with a small `--turns`.
+- Runs cost tokens in proportion to turns × agents, and most of a turn's cost is its agent's model. Start with a small `--turns`; for cheaper runs set the chaser A and worker models to `sonnet` in the settings.

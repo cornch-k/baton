@@ -22,7 +22,7 @@ Two agents fail in different ways. Put them on the same task, let them take turn
 | chaser-a | `baton:chaser-a` | chaser A model | chaser A stance | fresh every turn |
 | chaser-b | `baton:chaser-b` | chaser B model | chaser B stance | fresh every turn |
 
-Turn 1 is chaser-a; then they alternate. `state.next` holds whose turn is next.
+Turn 1 is chaser-a; then they alternate: the next role is the other one than the last `t` line's.
 
 ## Turn prompt
 
@@ -43,4 +43,4 @@ Never add the other chaser's report, your own summary of earlier turns, check re
 ## Stop
 
 - The budget is used up, or a turn fails (protocol).
-- Early stop, unless `--no-early-stop`: the last two turns, one by each chaser, both reported `status: done`, and the latest was `empty`.
+- Early stop, unless `--no-early-stop`: the `streak:` line shows `done x2` or more and `empty x1` or more (the last two turns, one by each chaser, both reported done, and the latest changed nothing).

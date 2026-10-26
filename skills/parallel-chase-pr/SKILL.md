@@ -27,7 +27,7 @@ If `--eval` is missing, ask the user for it and stop.
 ## Setup additions
 
 1. The run branch `baton/<run-id>` is the **integration branch**. The main checkout stays on it.
-2. Score the integration branch: evaluate it in a clean worktree (see Evaluate below) and store `integration_score`.
+2. Pass the evaluator as the `eval:` line of `start` (protocol), then score the integration branch on a clean checkout: `eval <run_dir> integration-0 --sha HEAD`. Store the score as `integration_score`.
 3. **Coordinator** (fresh, `baton:coordinator`, worker model): header, TASK, evaluator and goal. Parse `BATON-LANES`.
 4. Every lane, including lane 1, gets its own worktree and branch:
    ```bash
@@ -61,18 +61,16 @@ You start fresh; your lane's workspace is the only handoff. When your lane has a
 
 ## After each round
 
-1. Commit each lane in its own directory, and append one protocol log line per lane to `log.md`, starting `r<r> lane-<i>` instead of `t<n>`. Log every evaluation, merge and rejection there too, one line each.
+1. In one Bash call, run the protocol's `turn` once per lane, with label `"r<r> lane-<i>"` and `-C <lane dir>`. Log every merge and rejection to `log.md` too, one line each (evaluations log themselves).
 2. Each lane that reported `ready: yes` proposes its head commit. A newer proposal from the same lane replaces its older one.
-3. **Evaluate** every proposal, one at a time:
+3. **Evaluate** every proposal on a clean checkout, one after another, in one Bash call:
    ```bash
-   git worktree add -q --detach .baton/runs/<run-id>/eval-wt <sha>
-   ( cd .baton/runs/<run-id>/eval-wt && <eval> ) > .baton/runs/<run-id>/eval-<lane>-<sha7>.log 2>&1; echo "exit=$?"
-   git worktree remove --force .baton/runs/<run-id>/eval-wt
+   sh "${CLAUDE_PLUGIN_ROOT}/scripts/baton.sh" eval <run_dir> lane-<i>-<sha7> --sha <sha> --beat <integration_score> --goal <goal>
    ```
-   Write a receipt `receipts/<lane>-<sha7>.json` with lane, commit, score, command, exit code, the log's `shasum -a 256`, and the time.
-4. Reject a proposal if its evaluation failed, if it touches paths outside `--paths` (`git diff --name-only baton/<run-id>...<sha>`), or if its score doesn't beat `integration_score`.
+   It checks the commit out in a temporary worktree, runs `eval.sh` there, removes the worktree, and writes the receipt `receipts/lane-<i>-<sha7>.json` (commit, score, exit code, the evaluator's and the log's sha256, time).
+4. Reject a proposal if its evaluation was rejected, if it touches paths outside `--paths` (`git diff --name-only baton/<run-id>...<sha>`), or if it doesn't beat `integration_score` (`beats ...: no`).
 5. Take the single best remaining proposal and merge it into the integration branch: `git merge --no-ff -q -m "baton(parallel-chase-pr): merge lane-<i> <sha7> (<score>)" <sha>`. If the merge conflicts, run `git merge --abort` and reject it as "conflicts with integration".
-6. Evaluate the merged integration head the same way. If it doesn't beat the old `integration_score`, undo the merge with `git reset -q --hard HEAD~1` and reject the proposal. Otherwise update `integration_score`.
+6. Evaluate the merged integration head the same way (`eval <run_dir> integration-<r> --sha HEAD --beat <integration_score> --goal <goal>`). If it doesn't beat the old score, undo the merge with `git reset -q --hard HEAD~1` and reject the proposal. Otherwise update `integration_score`.
 7. At most one merge per round. Rejected and unmerged lanes hear why in their next prompt.
 8. A lane whose two turns in a row failed is held.
 

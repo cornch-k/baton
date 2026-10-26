@@ -45,7 +45,7 @@ claude --plugin-dir /path/to/baton
 | `/baton:fixed-interrupt "<task>" --eval "<cmd>"` | Chasers alternate every k accepted experiments scored by your evaluator; a blind reviewer picks the winner |
 | `/baton:parallel-chase "<task>"` | A coordinator plans three different lanes; each lane chases in parallel, with a shared leaderboard |
 | `/baton:parallel-chase-pr "<task>" --eval "<cmd>"` | Three lanes propose; a change merges only when a clean evaluation improves the score |
-| `/baton:recursive-lean-prover "<theorem>"` | Lean 4 theorem → lemmas: prose proof, step-by-step audit, split, formalize in worktrees, wiki. A lemma is accepted only when Lean confirms the exact planned statement and `#print axioms` shows no `sorryAx` or extra axiom. Needs a Lake project and Lean via elan (`brew install elan-init`) |
+| `/baton:recursive-lean-prover "<theorem>"` | Lean 4 theorem → lemmas. Each lemma is tried directly in Lean first; only one that doesn't go through gets a prose proof, a step-by-step audit and a split. Formalized in worktrees, recorded in a wiki. A lemma is accepted only when Lean confirms the exact planned statement and `#print axioms` shows no `sorryAx` or extra axiom. Needs a Lake project and Lean via elan (`brew install elan-init`) |
 | `/baton:author-flow "<description>"` | Writes a new flow; it lands only after a load check, a fake-world termination check and a critic |
 
 `/baton:flows` lists them and helps you pick one.
@@ -55,12 +55,24 @@ Shared flags: `--turns N`, `--minutes M`, `--check "<cmd>"`, `--no-early-stop`, 
 ## How a run works
 
 1. Baton needs a git repository with a clean working tree. It creates a run branch `baton/<flow>-<timestamp>`; your branch is untouched.
-2. The main session is the **orchestrator**. It spawns each turn's subagent, passes only what the flow allows (often nothing but the workspace), and commits after every turn.
+2. The main session is the **orchestrator**. It spawns each turn's subagent and passes only what the flow allows (often nothing but the workspace). After every turn, one call to `scripts/baton.sh` commits, runs your check, logs the turn and checks the budget.
 3. Agents end each turn with a short `BATON-REPORT` (or a reviewer's `BATON-VERDICT`). The orchestrator keeps only those blocks, so its own context lasts.
 4. State lives in `.baton/runs/<run-id>/` (listed in `.git/info/exclude`, so it never enters your tree): `state.json`, `log.md`, check and evaluator logs.
 5. At the end you get the stop reason, the commits, and the exact commands to merge or drop the branch, or to resume.
 
 Baton never pushes, never merges into your branch, and never turns on bypass permissions. For long runs, use a scratch repository and the `acceptEdits` or `auto` permission mode.
+
+## Cost
+
+Each turn is a fresh agent that re-reads the workspace. That is the design, and it is what a run pays for. Baton keeps everything around it small:
+
+- Working agents carry six tools (Read, Write, Edit, Bash, Glob, Grep) instead of every tool and MCP server in your session. Their fixed context per request drops from 33k–50k tokens to about 9k, and an agent sends dozens of requests per turn. They have no web or MCP tools; `curl` through Bash still works.
+- The orchestrator's bookkeeping is one script call per turn, so it doesn't spend a model round trip on each of commit, check, log and budget.
+- Lean lemmas are tried directly in Lean before any prose, audit or split, and Lean's mechanical checks aren't re-run by a reviewer.
+
+Measured on the same two-turn flame chase, 0.2.0 used 59–67% fewer subagent input tokens than 0.1.1 (37% fewer overall) and finished in 65–68 s instead of 85 s.
+
+The biggest dials are yours. Chaser A and the worker default to Opus; setting them to `sonnet` costs much less. Start with a small `--turns`; early stop is on by default.
 
 ## Settings
 

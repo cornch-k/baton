@@ -37,4 +37,4 @@ You start fresh. Only the workspace (files and git history of branch <branch>) c
 ## Stop
 
 - The budget is used up, or a turn fails (protocol).
-- Early stop, unless `--no-early-stop`: two consecutive rounds reported `status: done`, and the latest was `empty`.
+- Early stop, unless `--no-early-stop`: the `streak:` line shows `done x2` or more and `empty x1` or more.

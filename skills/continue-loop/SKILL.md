@@ -45,4 +45,4 @@ Fallback: if the worker can't be reached, play the worker yourself in this sessi
 ## Stop
 
 - The budget is used up, or a turn fails (protocol).
-- Early stop, unless `--no-early-stop`: two consecutive rounds reported `status: done`, and the latest was `empty`.
+- Early stop, unless `--no-early-stop`: the `streak:` line shows `done x2` or more and `empty x1` or more.

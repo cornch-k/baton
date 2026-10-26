@@ -36,7 +36,7 @@ Load the run protocol first (Skill tool → `baton:protocol`; if that fails, Rea
    You keep this session. After each of your turns, a fresh reviewer who never saw you work reads the repository and decides whether the TASK is done. If it isn't, its instructions become your next message.
    ```
    Round n > 1 (SendMessage to `<run-id>-actor`): the header line, then the reviewer's `next_prompt`, verbatim.
-2. **Commit** and run `--check` (protocol).
+2. **Turn call** (protocol): `turn <run_dir> t<n> actor <status>`.
 3. **Reviewer** (fresh):
    ```
    BATON rlar · turn <n>/<max> · role reviewer · run <run-id>
@@ -47,8 +47,8 @@ Load the run protocol first (Skill tool → `baton:protocol`; if that fails, Rea
    WHAT THE ACTOR SAID THIS TURN:
    <the actor's summary, changed and next lines>
 
-   COMMITS THIS RUN: run `git log --oneline <base>..HEAD`; inspect with `git diff <base>..HEAD`.
-   <if --check: "Check command: <cmd> (last result: pass|fail)">
+   COMMITS THIS RUN: `git log --oneline <base>..HEAD`; start from `git diff --stat <base>..HEAD`.
+   <if --check: "Check command: <cmd> (last result: <pass|fail from the turn call>)">
 
    Decide whether the TASK is completely done in the repository as it is now. If it isn't, write next_prompt: the exact instructions for the actor's next turn.
    ```

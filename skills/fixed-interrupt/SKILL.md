@@ -32,7 +32,7 @@ If `--eval` is missing, ask the user for it and stop.
 | chaser-b | `baton:chaser-b` | chaser B model | chaser B stance | fresh every turn |
 | blind reviewer | `baton:reviewer` | the model of the chaser *opposite* the author of the latest accepted candidate | none | fresh, once |
 
-chaser-a holds the first tenure. Store in `state.extra`: `holder`, `accepted_in_tenure`, `candidates` (list of `{label, commit, author, score}`), `best`, `last_result`. Write `contract.json` (eval, goal, k) to the run directory at setup.
+chaser-a holds the first tenure. Pass the evaluator as the `eval:` line of `start` and `{"goal": ..., "k": ...}` as its `options:` line (protocol); together they are the run's contract. Keep in `state.extra`: `holder`, `accepted_in_tenure`, `candidates` (list of `{label, commit, author, score}`) and `best`; write it only when a candidate is accepted or the tenure changes.
 
 ## Turn prompt
 
@@ -53,14 +53,16 @@ You start fresh; the workspace is the only handoff. Make one experiment: one coh
 
 ## After each turn
 
-1. Commit with a neutral message: `baton(fixed-interrupt): t<n>`. Don't put the role in it, because the blind reviewer reads commit messages. An `empty` turn is not a submission.
-2. Run the evaluator yourself:
+1. Commit and evaluate in one call, with a neutral commit message (the blind reviewer reads commit messages, so no role in it):
    ```bash
-   ( <eval> ) > .baton/runs/<run-id>/eval-t<n>.log 2>&1; echo "exit=$?"; tail -1 .baton/runs/<run-id>/eval-t<n>.log
+   sh "${CLAUDE_PLUGIN_ROOT}/scripts/baton.sh" turn <run_dir> t<n> <holder> <status> -m "baton(fixed-interrupt): t<n>" <<'EOF'
+   <summary>
+   EOF
+   sh "${CLAUDE_PLUGIN_ROOT}/scripts/baton.sh" eval <run_dir> t<n> --beat <best or none> --goal <goal>
    ```
-3. Exit code 0 and a numeric last line: the submission is accepted. Add candidate `C<i>` with this commit, its author and score, update `best`, and add one to `accepted_in_tenure`. Otherwise it is rejected; record the reason (the last two lines of the log) in `last_result`.
-4. Append the turn to `turns.json` in the run directory.
-5. When `accepted_in_tenure` reaches k, hand the tenure to the other chaser and reset the count.
+   Skip the `eval` line when the turn was `empty`: an empty turn is not a submission.
+2. `eval` printed a score: the submission is accepted. Add candidate `C<i>` with this commit, its author and score, update `best` when it beats it, and add one to `accepted_in_tenure`. `rejected (...)`: the reason and the two log lines it printed are `last_result` for the next prompt.
+3. When `accepted_in_tenure` reaches k, hand the tenure to the other chaser and reset the count.
 
 ## Blind review
 

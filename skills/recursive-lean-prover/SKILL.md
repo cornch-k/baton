@@ -1,7 +1,7 @@
 ---
 name: recursive-lean-prover
-description: Proves a Lean 4 theorem by recursion. Each lemma is planned and proved in prose, audited step by step by a fresh reviewer, split into child lemmas when needed, then formalized in its own git worktree. A lemma is accepted only when Lean itself confirms the exact planned statement with no sorry or extra axioms and a fresh reviewer reruns the check. Accepted lemmas go into a Markdown wiki. Run with /baton:recursive-lean-prover "<theorem>".
-argument-hint: "\"theorem name <binders> : statement\" | --file <path> --name <theorem> [--max-depth D] [--max-children C] [--revisions R] [--parallel P] [--turns N] [--minutes M] [--resume [run-id]]"
+description: Proves a Lean 4 theorem by recursion. Each lemma is first tried directly in Lean; one that doesn't go through is proved in prose, audited step by step by a fresh reviewer, split into child lemmas when needed, then formalized in its own git worktree. A lemma is accepted only when Lean itself confirms the exact planned statement with no sorry or extra axioms. Accepted lemmas go into a Markdown wiki. Run with /baton:recursive-lean-prover "<theorem>".
+argument-hint: "\"theorem name <binders> : statement\" | --file <path> --name <theorem> [--prose-first] [--max-depth D] [--max-children C] [--revisions R] [--parallel P] [--turns N] [--minutes M] [--resume [run-id]]"
 disable-model-invocation: true
 ---
 
@@ -13,7 +13,7 @@ Load the run protocol first (Skill tool → `baton:protocol`; if that fails, Rea
 
 ## What Lean is trusted for
 
-Three facts decide acceptance, and all three come from Lean, never from an agent's word:
+Three facts decide acceptance, and all three come from Lean, never from an agent's word. Because they are mechanical, no reviewer re-runs them:
 
 1. `lake build <Module>` succeeds for the lemma's own module. A plain `lake build` is **not** enough: it only builds what the library root imports, so a new file would never be checked.
 2. A check file elaborates `example : <planned statement> := by exact @<formal name>`. This fails (exit code 1) when the proved theorem is weaker or different.
@@ -54,9 +54,10 @@ Input is either a statement in the arguments (`theorem name <binders> : <type>`)
 
 ## Flags
 
+- `--prose-first`: skip the direct attempt (step 0) and always start from prose, as the original flow does.
 - `--max-depth D` (default 3), `--max-children C` (default 4), `--revisions R` for prose and for formal proofs each (default 3).
 - `--parallel P`: at most P lemma workers at once (default 3). Run at most 2 Lean processes of your own at the same time.
-- `--turns N`: the budget counts worker turns (default 40).
+- `--turns N`: the budget counts prover turns (default 40). Log each one with `turn <run_dir> t<n> prover-<x> <status> --no-commit` (protocol); its `budget:` line decides.
 
 ## Roles
 
@@ -67,15 +68,25 @@ Input is either a statement in the arguments (`theorem name <binders> : <type>`)
 
 ## The loop for one lemma x
 
-1. **Prose.** Spawn x's prover (Agent call with `name`):
+x's prover is spawned once, at its first step, with an Agent call named `<run-id>-<x>` and this opening; every later step is a SendMessage to it:
+
+```
+BATON recursive-lean-prover · lemma <x> (depth <d>) · role prover · run <run-id>
+
+STATEMENT (Lean, closed form; never change it):
+<statement>
+PREAMBLE: imports <imports>; opens <opens>
+ACCEPTED LEMMAS YOU MAY USE: lemmas/INDEX.md (use them by their formal names).
+```
+
+0. **Direct attempt** (unless `--prose-first`). Lean is the judge, so a lemma it accepts needs no prose and no audit. Create x's worktree as in step 5, but on the branch `baton/<run-id>-<x>-direct`, and ask x's prover:
    ```
-   BATON recursive-lean-prover · lemma <x> (depth <d>) · role prover · run <run-id>
-
-   STATEMENT (Lean, closed form; never change it):
-   <statement>
-   PREAMBLE: imports <imports>; opens <opens>
-   ACCEPTED LEMMAS YOU MAY USE: lemmas/INDEX.md (use them by their formal names).
-
+   Try to prove the statement directly in Lean. <the formalize instructions from step 5>
+   If it doesn't go through after a few honest tries, stop and report status: blocked with summary "needs prose". Don't fight it: a prose proof and a split come next.
+   ```
+   Run the comparator (step 6). A pass goes straight to Accept (step 7, merging the `-direct` branch), and x's wiki page says "proved directly in Lean". One failure goes back to the prover with the log tail ("Fix the formal proof."). A second failure or "needs prose" ends the attempt: `git worktree remove --force <worktree>`, keep the branch as a record, and go on to step 1 with the same prover.
+1. **Prose.** Ask x's prover:
+   ```
    Write lemmas/drafts/<x>.md: the statement, a short plan, and a prose proof as numbered steps, each small enough to check on its own. Write no Lean yet.
    If the statement has independent parts (a conjunction, several cases) or needs facts that deserve their own proof, report status: blocked with summary "split" instead of a proof.
    ```
@@ -101,38 +112,32 @@ Input is either a statement in the arguments (`theorem name <binders> : <type>`)
      theorem baton_<T>_<x> : <statement, verbatim> := ...
    No sorry, admit, new axiom, or option that switches off checking. Check it with `lake build <Lib>.Baton.R<T>.<x>` in that directory.
    ```
-6. **Comparator.** Run it yourself, inside the worktree:
+6. **Comparator.** Run it yourself in one Bash call, with the run directory as an absolute path `<R>`. The check file is written from the planned statement, so it matches it by construction:
    ```bash
-   cd <worktree>
-   lake build <Lib>.Baton.R<T>.<x> > <run dir>/build-<x>.log 2>&1; echo "build exit=$?"
-   ```
-   Write `<run dir>/checks/<x>.lean`:
-   ```lean
+   ( cd <worktree> && mkdir -p <R>/checks &&
+   cat > <R>/checks/<x>.lean <<'LEAN'
    import <Lib>.Baton.R<T>.<x>
    <the preamble opens>
    example : <statement, verbatim> := by exact @baton_<T>_<x>
    #print axioms baton_<T>_<x>
-   ```
-   ```bash
-   lake env lean <run dir>/checks/<x>.lean > <run dir>/check-<x>.log 2>&1; echo "check exit=$?"; tail -3 <run dir>/check-<x>.log
-   ```
-   Then decide the axioms mechanically, never by eye. This prints `AXIOMS OK` only when the axioms line exists and names nothing outside the three standard axioms:
-   ```bash
-   L=<run dir>/check-<x>.log
+   LEAN
+   lake build <Lib>.Baton.R<T>.<x> > <R>/build-<x>.log 2>&1; echo "build exit=$?"
+   lake env lean <R>/checks/<x>.lean > <R>/check-<x>.log 2>&1; echo "check exit=$?"; tail -3 <R>/check-<x>.log
+   L=<R>/check-<x>.log
    if grep -q "does not depend on any axioms" "$L"; then echo "AXIOMS OK"
    elif A=$(grep -o "depends on axioms: \[.*\]" "$L"); then
      BAD=$(echo "$A" | sed 's/.*\[\(.*\)\]/\1/' | tr ',' '\n' | tr -d ' ' | grep -vxE 'propext|Classical\.choice|Quot\.sound')
      [ -z "$BAD" ] && echo "AXIOMS OK" || echo "AXIOMS BAD: $BAD"
-   else echo "AXIOMS MISSING"; fi
+   else echo "AXIOMS MISSING"; fi )
    ```
+   The last part decides the axioms mechanically, never by eye: it prints `AXIOMS OK` only when the axioms line exists and names nothing outside the three standard axioms.
    It passes only if both exit codes are 0 and the line above printed `AXIOMS OK`. A `sorry` anywhere below the lemma, children included, shows up here as `sorryAx` even though the build and the `example` both exit 0. On failure, send the last 30 lines of the failing log to the prover ("Fix the formal proof."), up to `--revisions` times; after that the lemma is refused.
-7. **Rerun** (fresh auditor): "In <worktree>, run `lake build <Lib>.Baton.R<T>.<x>` and `lake env lean <run dir>/checks/<x>.lean` yourself. Confirm both exit 0, that the axioms line names only propext, Classical.choice or Quot.sound, and that the `example` line's statement is character for character the planned statement in lemmas/drafts/<x>.md. done: true to accept."
-8. **Accept**:
+7. **Accept**:
    ```bash
-   git merge --no-ff -q -m "baton(lean): accept <x>" baton/<run-id>-<x>
+   git merge --no-ff -q -m "baton(lean): accept <x>" <x's branch>
    git worktree remove --force <worktree>
    ```
-   Then move the draft to `lemmas/<x>.md`, append its line to `lemmas/INDEX.md`, and commit those two paths. The parent may now formalize once all its children are accepted.
+   Then write `lemmas/<x>.md` (the draft moved there, or for a direct proof: the statement, the Lean file and "proved directly in Lean"), append its line to `lemmas/INDEX.md`, and commit exactly those paths (and the draft's removal). The parent may now formalize once all its children are accepted.
 
 ## Stop
 

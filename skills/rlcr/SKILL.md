@@ -22,7 +22,7 @@ A Ralph loop with code review every round. The builder keeps its memory and hear
 
 ## Setup additions
 
-- If the plan file is the only change in `git status --porcelain`, setup may proceed: after creating the run branch, commit it as `baton(rlcr): plan` and record that commit as `plan_commit`. Otherwise `plan_commit` is the base.
+- If the plan file is the only uncommitted change, run `start rlcr --allow <plan path> ...`, then commit it on the run branch: `git add -- <plan path> && git commit -q -m "baton(rlcr): plan"`, and that commit is `plan_commit`. Otherwise `plan_commit` is the base. Store it in `state.extra.plan_commit`.
 - If the plan has `PENDING:` lines, ask the user up to two of them with AskUserQuestion before building, and let them skip. Append the answers under a "Decisions (answered at build start)" heading in the plan and commit that change.
 
 ## Roles
@@ -44,22 +44,22 @@ A Ralph loop with code review every round. The builder keeps its memory and hear
    Build the plan, step by step, meeting each step's acceptance check. You keep this session. After each turn, stop checks run and a fresh reviewer with no memory reads the repository; its findings come back to you as your next message.
    ```
    Round n > 1 (SendMessage to `<run-id>-builder`): the header line, then "Stop checks failed:" with the failing gates (if any), then the reviewer's findings and `next_prompt`, verbatim.
-2. **Commit** (protocol).
-3. **Stop checks.** Run them yourself on `git diff <base>..HEAD -U0` and keep only pass or fail plus at most three offending lines each:
-   - G1: `--check` passes, if given.
-   - G2: no conflict markers: `git grep -nE '^(<<<<<<<|>>>>>>>)( |$)'` finds nothing.
-   - G3: no new stubs in added lines: `^\+.*(TODO|FIXME|XXX|NotImplementedError|unimplemented!|todo!\()`.
-   - G4: no newly skipped or disabled tests in added lines: `^\+.*(@pytest\.mark\.skip|\.skip\(|\bxit\(|@Disabled|t\.Skip\()`.
-   - G5: nothing that looks like a secret in added lines: `^\+.*(BEGIN [A-Z ]*PRIVATE KEY|AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{30,})`.
-   - G6: the builder didn't edit the plan: `git diff --stat <plan_commit>..HEAD -- <plan path>` is empty.
+2. **Turn call** (protocol): `turn <run_dir> t<n> builder <status>`.
+3. **Stop checks**, in one call: `gates <run_dir> <plan path> <plan_commit>`. It prints pass or fail for each gate, at most three offending lines each (never a secret's value), and a last line `gates: all pass` or `gates: fail G..`. "Added lines" are those added since `plan_commit`:
+   - G1: the turn's check passed, if `--check` was given.
+   - G2: no conflict markers in the tree.
+   - G3: no new stubs in added lines (TODO, FIXME, XXX, NotImplementedError, `unimplemented!`, `todo!(`).
+   - G4: no newly skipped or disabled tests in added lines.
+   - G5: nothing that looks like a secret in added lines (private keys, AWS, OpenAI-style and GitHub tokens).
+   - G6: the builder didn't edit the plan since `plan_commit`.
 4. **Reviewer** (fresh):
    ```
    BATON rlcr · turn <n>/<max> · role reviewer · run <run-id>
 
    PLAN: <plan path>
-   CHANGES: `git log --oneline <base>..HEAD`; inspect with `git diff <base>..HEAD`.
+   CHANGES: `git log --oneline <base>..HEAD`; start from `git diff --stat <base>..HEAD`.
    WHAT THE BUILDER SAID: <its summary, changed and next lines>
-   STOP CHECKS: <G1..G6 pass/fail>
+   STOP CHECKS: <the gates output>
 
    List what is left: plan steps not done or not meeting their acceptance check, bugs, missing or hollow tests. done: true only if nothing is left.
    ```
