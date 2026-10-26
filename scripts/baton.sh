@@ -35,6 +35,30 @@ load_env() {
   . "$1/run.env"
 }
 
+# Read a string or number field from a run's state.json, pretty-printed or not.
+js() { tr -d '\n' < "$1/state.json" | grep -o "\"$2\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" | head -1 | sed 's/.*:[[:space:]]*"\(.*\)"$/\1/'; }
+jn() { tr -d '\n' < "$1/state.json" | grep -o "\"$2\"[[:space:]]*:[[:space:]]*[0-9][0-9]*" | head -1 | sed 's/.*:[[:space:]]*//'; }
+
+# Runs started before 0.2.0 have only state.json; build the run.env the script needs from it.
+migrate_env() {
+  [ -f "$1/state.json" ] || die "no run.env or state.json in $1"
+  m_branch=$(js "$1" branch); m_base=$(js "$1" base); m_started=$(jn "$1" started_epoch)
+  [ -n "$m_branch" ] && [ -n "$m_base" ] && [ -n "$m_started" ] || die "can't read branch, base and started_epoch from $1/state.json"
+  m_minutes=$(jn "$1" minutes)
+  m_turns=$(jn "$1" turns)
+  cat > "$1/run.env" <<EOF
+FLOW='$(js "$1" flow)'
+RUN_ID='$(basename "$1")'
+BRANCH='$m_branch'
+START_BRANCH='$(js "$1" start_branch)'
+BASE='$m_base'
+STARTED=$m_started
+MAX_TURNS=${m_turns:-8}
+DEADLINE=${m_minutes:+$((m_started + m_minutes * 60))}
+EOF
+  echo "note: this run started before baton 0.2.0, so run.env was rebuilt from state.json. It has no check.sh or eval.sh: if it used --check or --eval, write those commands there (they are in state.json) before the next turn."
+}
+
 # Labels that share a family are counted together: t3 and t4, or "r2 lane-1" and "r3 lane-1".
 family() { printf '%s\n' "$1" | sed -E 's/^([a-z]+)[0-9]+(.*)$/\1[0-9]+\2/'; }
 
@@ -142,13 +166,16 @@ cmd_resume() {
     for d in $(ls -1d .baton/runs/"$flow"-* 2>/dev/null | sort -r); do
       last=$(grep -E '^stop · ' "$d/log.md" 2>/dev/null | tail -1)
       case $last in "stop · finished"*|"stop · failed"*) continue ;; esac
+      [ -f "$d/state.json" ] && case $(js "$d" status) in finished|failed) continue ;; esac
       id=$(basename "$d"); break
     done
     [ -n "$id" ] || die "no $flow run to resume"
   fi
   rd=.baton/runs/$id
-  load_env "$rd"
+  [ -d "$rd" ] || die "no run $id in .baton/runs"
   [ -z "$(git status --porcelain)" ] || die "the working tree has uncommitted changes; commit or stash them first"
+  [ -f "$rd/run.env" ] || migrate_env "$rd"
+  load_env "$rd"
   cur=$(git symbolic-ref -q --short HEAD || echo "")
   if [ "$cur" != "$BRANCH" ]; then git switch -q "$BRANCH" || die "cannot switch to $BRANCH"; fi
   now=$(date +%s)

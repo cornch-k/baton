@@ -143,7 +143,7 @@ It logs the stop and prints the turns used, the run's commits, the last check re
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/baton.sh" resume <run-id> [--turns N] [--minutes M]
 ```
 
-Without an id, pass `--flow <flow>` and it picks this flow's newest run that didn't finish or fail. It switches to the run branch (the tree must be clean), applies a new budget if given, and prints the last turns. Then read `state.json` for the TASK and `extra`. The next turn number is the last `t<n>` plus one, and the flow's rules give the next role (for alternating flows, the other role than the last line's). Persistent agents may be gone; if SendMessage to `<run-id>-<role>` fails, follow the flow's fallback.
+Without an id, pass `--flow <flow>` and it picks this flow's newest run that didn't finish or fail. It switches to the run branch (the tree must be clean), applies a new budget if given, and prints the last turns. Then read `state.json` for the TASK and `extra`. The next turn number is the last `t<n>` plus one, and the flow's rules give the next role (for alternating flows, the other role than the last line's). Persistent agents may be gone; if SendMessage to `<run-id>-<role>` fails, follow the flow's fallback. A run started before baton 0.2.0 still resumes: the script rebuilds its `run.env` from `state.json` and says so. Then write its `--check` or `--eval` command, if it had one, to `check.sh` or `eval.sh` in the run directory, and try the agent names or ids in its `state.json` `agents` before the fallback.
 
 ## Safety
 
