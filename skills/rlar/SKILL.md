@@ -44,8 +44,8 @@ Load the run protocol first (Skill tool → `baton:protocol`; if that fails, Rea
    TASK:
    <task, verbatim>
 
-   WHAT THE ACTOR SAID THIS TURN:
-   <the actor's summary, changed and next lines>
+   WHAT THE ACTOR SAID THIS TURN (verify, don't trust):
+   <the actor's summary and changed lines>
 
    COMMITS THIS RUN: `git log --oneline <base>..HEAD`; start from `git diff --stat <base>..HEAD`.
    <if --check: "Check command: <cmd> (last result: <pass|fail from the turn call>)">

@@ -59,7 +59,7 @@ Flows add their own flags. If the TASK is empty and you aren't resuming, ask the
    <TASK verbatim>
    BATON_END
    ```
-   It checks that this is a git repository with a clean working tree, makes the run id (`<flow>-<YYYYMMDD-HHMMSS>`), the run directory `.baton/runs/<run-id>/` (kept out of git through `.git/info/exclude`, so the user's tree is untouched), the run branch `baton/<run-id>` (unless `--in-place`), `run.env`, `log.md` and `state.json` (with the TASK, which `--resume` rebuilds prompts from), plus `check.sh` and `eval.sh` that later calls run. The quoted heredoc keeps the TASK and the user's commands exactly as given. It prints `run_id`, `run_dir`, `branch` and `base`. If it prints `ERROR`, pass that line to the user and stop. Never stash, reset or discard the user's changes yourself. Work from the repository root from here on.
+   It checks that this is a git repository with a clean working tree, makes the run id (`<flow>-<YYYYMMDD-HHMMSS>`), the run directory `.baton/runs/<run-id>/` (kept out of git through `.git/info/exclude`, so the user's tree is untouched), the run branch `baton/<run-id>` (unless `--in-place`), `run.env`, `log.md` and `state.json` (with the TASK, which `--resume` rebuilds prompts from), plus `check.sh` and `eval.sh` that later calls run. The quoted heredoc keeps the TASK and the user's commands exactly as given. It prints `run_id`, `run_dir` (absolute, so it works from any directory), `branch` and `base`. If it prints `ERROR`, pass that line to the user and stop. Never stash, reset or discard the user's changes yourself. Work from the repository root from here on.
 2. Tell the user in two lines at most: flow, branch, budget, and that `/baton:<flow> --resume <run-id>` continues the run if it's interrupted.
 
 Only flows that say they keep state in `state.json`'s `extra` write that file again.
@@ -73,7 +73,7 @@ Any other branch the flow needs is named `baton/<run-id>-<suffix>` (never `baton
 - Use the Agent tool with `subagent_type` `baton:<agent>` (`chaser-a`, `chaser-b`, `worker`, `reviewer`, `cleaner`, `coordinator`) and the `model` configured for that role. Use a short `description` such as `baton t3 chaser-b`.
 - Every prompt starts with one header line: `BATON <flow> · turn <n>/<max> · role <role> · run <run-id>`, followed by the flow's template. Fill in the template's placeholders and send it as written; don't add advice, hints or rules of your own.
 - **Fresh roles** get a new Agent call every turn and nothing from earlier turns except what the flow's template says.
-- **Persistent roles** keep their session. On the first spawn give the agent the `name` `<run-id>-<role>`, and continue it later with SendMessage to that name. If SendMessage isn't available or the agent can't be reached, log it, then follow the flow's fallback: respawn it fresh with a short recap, or, in single-worker flows, play the role yourself in this session.
+- **Persistent roles** keep their session. On the first spawn give the agent the `name` `<run-id>-<role>`, and continue it later with SendMessage to that name. If SendMessage isn't available or the agent can't be reached, follow the flow's fallback: respawn it fresh once, under a new name `<run-id>-<role>-r<n>`, with a short recap, and mention it in the final report. Never do the agent's work in this session.
 - Wait for the subagent to finish. Don't poll, don't read its transcript, and don't work on the task meanwhile. Start several subagents in one message only where the flow says roles run in parallel.
 
 ## Report blocks
@@ -99,7 +99,7 @@ next_prompt: |
   <the exact instructions the worker gets next; empty when done>
 ```
 
-Flows may ask for extra lines in either block (for example `ready: yes`, `nominate: C2`). If a block is missing, treat the turn as `status: missing` with the agent's last line as the summary.
+Flows may ask for extra lines in either block (for example `ready: yes`, `nominate: C2`). Use the last block in the message. If a report block is missing, treat the turn as `status: missing` with the agent's last line as the summary. If a verdict block is missing, spawn that reviewer once more; a second miss is a failed turn.
 
 ## After every work turn
 
@@ -113,9 +113,9 @@ EOF
 
 - `<status>` is the report's status, or `missing`.
 - It stages everything and commits it as `baton(<flow>): t<n> <role>`; a turn that staged nothing is `empty`. The agent's summary stays out of the commit message: fresh agents read `git log`, and the summary is what the last agent *said*, which flows like flame-chase must not pass on. Summaries go only to `log.md`.
-- If `check.sh` exists it runs it, logs its output to `check-t<n>.log`, and removes the untracked files the check itself created, so they don't land in the next commit. Agents see the result only if the flow says so.
+- If `check.sh` exists it runs it, logs its output to `check-t<n>.log`, and undoes what the check did to the tree (files it created, tracked files it changed), so nothing of it lands in the next commit. Agents see the result only if the flow says so. A check can take longer than the Bash tool's default two minutes: give the `turn` call a `timeout` above what the check needs. A `turn` killed mid-check is still logged, as `check fail`.
 - It prints the log line, the commit, a `streak:` line (how many turns in a row had this status, the status before that run, and how many in a row were `empty` or `changed`), `FAILED:` on the second `blocked` or `missing` in a row, and `budget:` ending in `continue` or `spent`. Every rule about consecutive turns or the budget is decided from these lines.
-- Options: `-C <dir>` commits in another worktree, `-m "<message>"` replaces the commit message, `--no-commit` only logs (for flows that commit exact paths themselves). Labels other than `t<n>` are allowed, for example `r<r> lane-<i>`; streaks are counted per label family.
+- Options: `-C <dir>` commits in another worktree, `-m "<message>"` replaces the commit message, `--no-commit` only logs (no commit, no check; for flows that commit exact paths themselves), `--gates <plan path>` runs rlcr's stop checks in the same call. Labels other than `t<n>` are allowed, for example `r<r> lane-<i>`; streaks are counted per label family.
 
 Review, cleaner and coordinator turns don't count against the budget unless the flow says so.
 
@@ -143,7 +143,7 @@ It logs the stop and prints the turns used, the run's commits, the last check re
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/baton.sh" resume <run-id> [--turns N] [--minutes M]
 ```
 
-Without an id, pass `--flow <flow>` and it picks this flow's newest run that didn't finish or fail. It switches to the run branch (the tree must be clean), applies a new budget if given, and prints the last turns. Then read `state.json` for the TASK and `extra`. The next turn number is the last `t<n>` plus one, and the flow's rules give the next role (for alternating flows, the other role than the last line's). Persistent agents may be gone; if SendMessage to `<run-id>-<role>` fails, follow the flow's fallback. A run started before baton 0.2.0 still resumes: the script rebuilds its `run.env` from `state.json` and says so. Then write its `--check` or `--eval` command, if it had one, to `check.sh` or `eval.sh` in the run directory, and try the agent names or ids in its `state.json` `agents` before the fallback.
+Without an id, pass `--flow <flow>` and it picks this flow's newest run that didn't finish or fail. It switches to the run branch (the tree must be clean), applies a new budget if given, and prints the run directory, the first line of the TASK and the last turns. Read `state.json` only if you need the whole TASK or `extra`. The next turn number is the last `t<n>` plus one, and the flow's rules give the next role (for alternating flows, the other role than the last line's). Persistent agents may be gone; if SendMessage to `<run-id>-<role>` fails, follow the flow's fallback. A run started before baton 0.2.0 still resumes: the script rebuilds its `run.env` from `state.json` and says so. Then write its `--check` or `--eval` command, if it had one, to `check.sh` or `eval.sh` in the run directory, and try the agent names or ids in its `state.json` `agents` before the fallback.
 
 ## Safety
 

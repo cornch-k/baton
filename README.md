@@ -41,7 +41,7 @@ claude --plugin-dir /path/to/baton
 | `/baton:rlar "<task>"` | A persistent actor works; a fresh reviewer decides "done" and writes the actor's next prompt |
 | `/baton:gen-idea "<idea>"` | Idea → a draft with a main direction and alternatives, checked against the repository; no code |
 | `/baton:gen-plan <idea>` | A planner that remembers and a fresh analyst agree on `docs/plan.md` |
-| `/baton:rlcr [docs/plan.md]` | Build the plan: stop checks every turn, a fresh review every round, a clean whole-change review to finish |
+| `/baton:rlcr [docs/plan.md]` | Build the plan: stop checks every turn, an incremental review every round, one whole-change review by a different model to finish |
 | `/baton:fixed-interrupt "<task>" --eval "<cmd>"` | Chasers alternate every k accepted experiments scored by your evaluator; a blind reviewer picks the winner |
 | `/baton:parallel-chase "<task>"` | A coordinator plans three different lanes; each lane chases in parallel, with a shared leaderboard |
 | `/baton:parallel-chase-pr "<task>" --eval "<cmd>"` | Three lanes propose; a change merges only when a clean evaluation improves the score |
@@ -69,6 +69,7 @@ Each turn is a fresh agent that re-reads the workspace. That is the design, and 
 - Working agents carry six tools (Read, Write, Edit, Bash, Glob, Grep) instead of every tool and MCP server in your session. Their fixed context per request drops from 33k–50k tokens to about 9k, and an agent sends dozens of requests per turn. They have no web or MCP tools; `curl` through Bash still works.
 - The orchestrator's bookkeeping is one script call per turn, so it doesn't spend a model round trip on each of commit, check, log and budget.
 - Lean lemmas are tried directly in Lean before any prose, audit or split, and Lean's mechanical checks aren't re-run by a reviewer.
+- `rlcr`'s round reviewer reads only the change since the last review plus that review's findings, not the whole run every round; the stop checks ride on the `turn` call; the final review is one pass by a different model, at most twice.
 
 Measured on the same two-turn flame chase, 0.2.0 used 59–67% fewer subagent input tokens than 0.1.1 (37% fewer overall) and finished in 65–68 s instead of 85 s.
 
@@ -92,7 +93,7 @@ The biggest dials are yours. Chaser A and the worker default to Opus; setting th
 - Most flows stop early when their own done-condition holds (`--no-early-stop` restores "run to the budget").
 - `parallel-chase-pr` proposes local merge candidates instead of opening GitHub pull requests.
 - `author-flow`'s termination gate is traced by a reviewer model rather than executed against fake agents.
-- `rlcr` runs six stop checks of its own (check command, conflict markers, new stubs, skipped tests, secrets, plan untouched).
+- `rlcr` runs six stop checks of its own (check command, conflict markers, new stubs, skipped tests, secrets, plan untouched); the reviewer can waive a false positive, and each round reviews only what changed since the last review.
 
 ## Credits
 

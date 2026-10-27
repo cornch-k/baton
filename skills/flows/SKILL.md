@@ -19,7 +19,7 @@ Every flow runs as `/baton:<flow> "<task>" [flags]`, works on a run branch `bato
 | `continue-loop` | Task once, then "continue" | The simplest long run |
 | `goal` | The task becomes the worker's own goal; it stops when it says the goal is met, with evidence | A measurable finish line, self-judged |
 | `rlar` | Persistent actor; a fresh reviewer decides "done" and writes the next prompt | "Done" shouldn't be judged by the one who did it |
-| `gen-idea` → `gen-plan` → `rlcr` | Idea draft → plan agreed by planner and fresh analyst → build with stop checks, a review every round and a final whole-change review | Larger features you want planned and reviewed |
+| `gen-idea` → `gen-plan` → `rlcr` | Idea draft → plan agreed by planner and fresh analyst → build with stop checks, an incremental review every round and one whole-change review by a different model | Larger features you want planned and reviewed |
 | `fixed-interrupt` | Chasers alternate every k accepted experiments scored by your evaluator; a blind review picks the winner | Optimizing a measurable score |
 | `parallel-chase` | A coordinator plans three different lanes; each lane chases in parallel; a shared leaderboard | The right approach isn't obvious |
 | `parallel-chase-pr` | Three lanes propose; merged only when a clean evaluation improves the score | Score-driven work where nothing should land unmeasured |
